@@ -9,6 +9,7 @@ import scipy
 import scipy.sparse
 import json
 import numpy as np
+import scipy.sparse as sp
 
 class SparseMLP(nn.Module):
     """One-hidden-layer MLP that accepts sparse input tensors.
@@ -209,11 +210,18 @@ def train_neural_network_model(training_set, validation_set, num_classes, encode
     time_document_to_vector = time.time()
     print(f"Document transformation done! Time taken: {time_document_to_vector - time_start:.3f} seconds")
     
-    # Keep SciPy sparse here; conversion to torch happens in sparse_collate
-    X_train_sparse = csr_matrix(training_vectors)
-    X_val_sparse = csr_matrix(validation_vectors)
+    if sp.issparse(training_vectors[0]):
+        X_train_sparse = sp.vstack(training_vectors).tocsr()
+    else:
+        X_train_sparse = sp.csr_matrix(training_vectors)
 
-    train_dataset = SparseDataset(X_train_sparse, training_labels) # create the training dataset
+    # NEW LOGIC: Handle sparse vs dense matrices for validation data
+    if sp.issparse(validation_vectors[0]):
+        X_val_sparse = sp.vstack(validation_vectors).tocsr()
+    else:
+        X_val_sparse = sp.csr_matrix(validation_vectors)
+
+    train_dataset = SparseDataset(X_train_sparse, training_labels)
     val_dataset = SparseDataset(X_val_sparse, validation_labels) # create the validation dataset
 
     # create the data loaders
@@ -316,13 +324,14 @@ def predict_probs(texts, model, encoder, batch_size=10):
     encoder: encoder used in training
     batch_size: how many at a time
     """
-    
-    device = model.weight.device
-        
     vectors = [encoder(x) for x in texts]
     labels = [0 for _ in texts]
 
-    x_sparse = csr_matrix(vectors)
+    # Handle sparse vs dense matrices for test data
+    if sp.issparse(vectors[0]):
+        x_sparse = sp.vstack(vectors).tocsr()
+    else:
+        x_sparse = sp.csr_matrix(vectors)
 
     dl = DataLoader(
         SparseDataset(x_sparse, labels),
@@ -332,6 +341,9 @@ def predict_probs(texts, model, encoder, batch_size=10):
     )
     
     model.eval()  # disable dropout / training behaviour
+    
+    # NEW LOGIC: Automatically detect the device from the loaded model
+    device = next(model.parameters()).device
     
     all_probs = []
     with torch.no_grad():  # no gradients needed for evaluation

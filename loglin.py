@@ -2,6 +2,7 @@ from scipy.sparse import csr_matrix
 from sklearn.linear_model import LogisticRegression
 import pickle
 from tqdm.auto import tqdm
+import scipy.sparse as sp
 
 def load(path):
     """
@@ -19,15 +20,16 @@ def fit(training_set, encoder: 'Encoder', save_to=None, max_iter=100, n_jobs=-1)
     encoder: an instance of the Encoder class (such as TokenIndicator)    
     save_to: (str) if given, save the model to {save_to}.pickle
     """
-    # Convert the training and validation sets to vectors
     training_vectors = [encoder(text) for text, label in training_set]
     training_labels = [label for text, label in training_set]
 
-    #To train the model more efficiently, we transform the training vectors to a sparse matrix
-    X_train_sparse = csr_matrix(training_vectors)
-
+    if sp.issparse(training_vectors[0]):
+        X_train_sparse = sp.vstack(training_vectors).tocsr()
+    else:
+        X_train_sparse = csr_matrix(training_vectors)
+        
     # Train the logistic model
-    logistic_model = LogisticRegression(solver="saga", max_iter=max_iter, n_jobs=n_jobs) #sparse matrix frinedly solver 
+    logistic_model = LogisticRegression(solver="saga", max_iter=max_iter, n_jobs=n_jobs)
     logistic_model.fit(X_train_sparse, training_labels)
 
     if save_to is not None:        
@@ -46,7 +48,12 @@ def predict(texts, model, encoder: 'Encoder'):
     encoder: the Encoder used for in the model's training
     """
     validation_vectors = [encoder(text) for text in texts]
-    X_val_sparse = csr_matrix(validation_vectors)
+    
+    if sp.issparse(validation_vectors[0]):
+        X_val_sparse = sp.vstack(validation_vectors).tocsr()
+    else:
+        X_val_sparse = csr_matrix(validation_vectors)
+        
     predictions = model.predict(X_val_sparse)
     return predictions
 
