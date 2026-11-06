@@ -13,6 +13,7 @@ import random
 
 import loglin
 import smlp
+import mlp
 import clslib
 
 
@@ -146,7 +147,7 @@ def cross_validation_experiment(data_splits, outcome_space, encoder: 'Encoder', 
             gold_labels_validation = [gold_label for text, gold_label in validation_set]
             accuracies[fold] = accuracy_score(gold_labels_validation, predictions[fold])
         elif model_option == 'mlp':            
-            metrics, best_epoch, predictions[fold] = smlp.train_neural_network_model(
+            metrics, best_epoch, predictions[fold] = mlp.train_neural_network_model(
                 training_set, validation_set, len(outcome_space), encoder, save_to=f'{fold_folder}/model', **smlp_args
             )
             models[fold] = f'{fold_folder}/model'
