@@ -10,3 +10,9 @@ __pycache__/
 *.pt
 __pycache__/
 .ipynb_checkpoints/
+
+# project2: generated files
+project2/nltk_data/
+project2/results_imdb/
+project2/glove*.zip
+project2/**/.ipynb_checkpoints/
